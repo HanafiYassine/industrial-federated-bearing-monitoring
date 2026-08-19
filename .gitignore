@@ -1,1 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDEs / editors
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large/raw research data
+/data/NASA/
+*.zip
+*.7z
+*.tar
+*.gz
+
+# Generated experiment outputs
+/results/
+/outputs/
+/checkpoints/
+/models/
+
+# Generated figures and caches
+/figures/generated/
+*.png.tmp
+*.jpg.tmp
+
+# Logs
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temporary files
+*.tmp
+*.bak
+*~
