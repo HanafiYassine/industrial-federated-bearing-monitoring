@@ -1,1 +1,29 @@
-
+cff-version: 1.2.0
+message: "If you use this software or reproduce the experiments, please cite this repository and the associated article when available."
+title: "Federated Learning for Industrial Bearing Condition Monitoring"
+abstract: >-
+  Reproducible research software for centralized SOM anomaly detection,
+  federated learning with FedAvg, IID and non-IID client partitioning,
+  client dropout, sensor noise, stale updates, persistent failures,
+  combined industrial reliability stress testing, and preliminary
+  reliability-aware federated aggregation using the NASA IMS bearing dataset.
+authors:
+  - family-names: "Yassine"
+    given-names: "Hanafi"
+    affiliation: "Independent research project"
+keywords:
+  - federated learning
+  - industrial condition monitoring
+  - anomaly detection
+  - NASA IMS
+  - bearing fault diagnosis
+  - industrial cyber-physical systems
+  - FedAvg
+  - non-IID federated learning
+  - client reliability
+  - predictive maintenance
+license: MIT
+repository-code: "https://github.com/HanafiYassine/industrial-federated-bearing-monitoring"
+url: "https://github.com/HanafiYassine/industrial-federated-bearing-monitoring"
+version: "0.1.0"
+date-released: "2026-08-19"
