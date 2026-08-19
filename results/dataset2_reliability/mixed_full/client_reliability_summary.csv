@@ -1,0 +1,11 @@
+client_id,samples,anomaly_samples,noise_role,stale_role,failure_role,participating_rounds,failed_rounds,noise_rounds,stale_rounds,mean_reliability
+1,13,4,False,False,False,15,0,0,0,1.0
+2,36,2,False,False,False,15,0,0,0,1.0
+3,53,37,True,False,False,15,0,15,0,0.6666666666666665
+4,28,24,False,False,False,15,0,0,0,1.0
+5,11,1,False,False,False,15,0,0,0,1.0
+6,21,17,False,False,False,15,0,0,0,1.0
+7,107,4,False,True,False,15,0,0,15,0.6999999999999998
+8,23,21,False,False,False,15,0,0,0,1.0
+9,180,104,False,False,True,4,11,0,0,0.26666666666666666
+10,315,20,False,False,False,15,0,0,0,1.0

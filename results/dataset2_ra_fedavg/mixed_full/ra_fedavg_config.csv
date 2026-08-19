@@ -1,0 +1,13 @@
+parameter,value
+scenario,mixed_full
+clients,10
+rounds,15
+local_epochs,1
+batch_size,512
+learning_rate,0.001
+seed,42
+data_weight,0.15
+loss_weight,0.35
+stability_weight,0.35
+availability_weight,0.15
+aggregation,Reliability-aware weighted aggregation

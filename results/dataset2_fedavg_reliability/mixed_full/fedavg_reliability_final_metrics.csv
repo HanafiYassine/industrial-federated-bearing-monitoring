@@ -1,0 +1,17 @@
+metric,value
+scenario,mixed_full
+rounds,15
+clients,10
+local_epochs,1
+batch_size,512
+learning_rate,0.001
+seed,42
+final_accuracy,0.8375634517766497
+final_precision,1.0
+final_recall,0.4482758620689655
+final_f1,0.6190476190476191
+final_roc_auc,0.9343835276606302
+final_test_loss,0.5863351225852966
+total_communication_bytes,16833456
+total_communication_mib,16.053634643554688
+total_round_time_seconds,1.617424199997913

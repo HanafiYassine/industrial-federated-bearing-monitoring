@@ -1,0 +1,14 @@
+parameter,value
+scenario,sensor_noise
+clients,10
+rounds,15
+local_epochs,1
+batch_size,512
+learning_rate,0.001
+seed,42
+device,cpu
+model,FederatedMLP
+input_features,36
+hidden_layers,128-64-32
+dropout,0.4
+aggregation,FedAvg

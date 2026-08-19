@@ -1,0 +1,145 @@
+==========================================================================================
+FEDAVG STRESS-TEST EVALUATION
+==========================================================================================
+
+All values are our controlled experimental results.
+Published-paper values are intentionally not mixed into this table.
+
+IID
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.893401
+Final precision      : 1.000000
+Final recall         : 0.637931
+Final F1             : 0.778947
+Final ROC-AUC        : 0.961176
+Final test loss      : 0.457921
+Best F1              : 0.851485 (round 8)
+Best ROC-AUC         : 0.961176 (round 15)
+Communication        : 17.3241 MiB
+
+Balanced Non-IID
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.893401
+Final precision      : 1.000000
+Final recall         : 0.637931
+Final F1             : 0.778947
+Final ROC-AUC        : 0.956710
+Final test loss      : 0.546510
+Best F1              : 0.862745 (round 10)
+Best ROC-AUC         : 0.956710 (round 15)
+Communication        : 17.3241 MiB
+
+Unbalanced Non-IID
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.898477
+Final precision      : 1.000000
+Final recall         : 0.655172
+Final F1             : 0.791667
+Final ROC-AUC        : 0.956835
+Final test loss      : 0.555285
+Best F1              : 0.873786 (round 11)
+Best ROC-AUC         : 0.956835 (round 15)
+Communication        : 17.3241 MiB
+
+Random Dropout 20%
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.893401
+Final precision      : 1.000000
+Final recall         : 0.637931
+Final F1             : 0.778947
+Final ROC-AUC        : 0.954354
+Final test loss      : 0.556195
+Best F1              : 0.884615 (round 11)
+Best ROC-AUC         : 0.954354 (round 15)
+Communication        : 13.8593 MiB
+
+Random Dropout 40%
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.903553
+Final precision      : 1.000000
+Final recall         : 0.672414
+Final F1             : 0.804124
+Final ROC-AUC        : 0.956586
+Final test loss      : 0.570377
+Best F1              : 0.884615 (round 11)
+Best ROC-AUC         : 0.956586 (round 15)
+Communication        : 10.3944 MiB
+
+Random Dropout 50%
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.868020
+Final precision      : 1.000000
+Final recall         : 0.551724
+Final F1             : 0.711111
+Final ROC-AUC        : 0.948524
+Final test loss      : 0.558273
+Best F1              : 0.843137 (round 10)
+Best ROC-AUC         : 0.948524 (round 14)
+Communication        : 8.6620 MiB
+
+Sensor Noise
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.898477
+Final precision      : 1.000000
+Final recall         : 0.655172
+Final F1             : 0.791667
+Final ROC-AUC        : 0.956710
+Final test loss      : 0.556814
+Best F1              : 0.873786 (round 11)
+Best ROC-AUC         : 0.956710 (round 15)
+Communication        : 17.3241 MiB
+
+Stale Updates
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.898477
+Final precision      : 1.000000
+Final recall         : 0.655172
+Final F1             : 0.791667
+Final ROC-AUC        : 0.955098
+Final test loss      : 0.564715
+Best F1              : 0.884615 (round 11)
+Best ROC-AUC         : 0.955098 (round 15)
+Communication        : 17.3241 MiB
+
+Persistent Failure
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.944162
+Final precision      : 0.927273
+Final recall         : 0.879310
+Final F1             : 0.902655
+Final ROC-AUC        : 0.969362
+Final test loss      : 0.584342
+Best F1              : 0.902655 (round 15)
+Best ROC-AUC         : 0.969362 (round 15)
+Communication        : 14.7832 MiB
+
+Noise + Stale
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.934010
+Final precision      : 0.978723
+Final recall         : 0.793103
+Final F1             : 0.876190
+Final ROC-AUC        : 0.944059
+Final test loss      : 0.620692
+Best F1              : 0.876190 (round 15)
+Best ROC-AUC         : 0.944059 (round 15)
+Communication        : 17.3241 MiB
+
+Full Mixed
+------------------------------------------------------------------------------------------
+Final accuracy       : 0.837563
+Final precision      : 1.000000
+Final recall         : 0.448276
+Final F1             : 0.619048
+Final ROC-AUC        : 0.934384
+Final test loss      : 0.586335
+Best F1              : 0.808081 (round 10)
+Best ROC-AUC         : 0.934384 (round 15)
+Communication        : 16.0536 MiB
+
+KEY CONTROLLED COMPARISON
+------------------------------------------------------------------------------------------
+Full Mixed ΔF1 vs Clean Non-IID   : -0.172619
+Full Mixed ΔRecall vs Clean      : -0.206897
+Full Mixed ΔROC-AUC vs Clean     : -0.022451
+Full Mixed ΔTest Loss vs Clean   : +0.031050

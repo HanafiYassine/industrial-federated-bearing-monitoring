@@ -1,0 +1,8 @@
+parameter,value
+dropout_rate,0.2
+dropout_percentage,20.0
+clients,10.0
+rounds,15.0
+seed,10042.0
+dropped_clients_per_round,2.0
+participating_clients_per_round,8.0

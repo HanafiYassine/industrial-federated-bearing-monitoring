@@ -1,0 +1,51 @@
+==============================================================================
+FEDERATED BASELINE COMPARISON
+==============================================================================
+
+IID
+------------------------------------------------------------------------------
+Final accuracy      : 0.893401
+Final precision     : 1.000000
+Final recall        : 0.637931
+Final F1            : 0.778947
+Final ROC-AUC       : 0.961176
+Final test loss     : 0.457921
+Best accuracy       : 0.923858 (round 8)
+Best F1             : 0.851485 (round 8)
+Best ROC-AUC        : 0.961176 (round 15)
+Communication       : 17.3241 MiB
+Total round time    : 1.4997 s
+
+Balanced Non-IID
+------------------------------------------------------------------------------
+Final accuracy      : 0.893401
+Final precision     : 1.000000
+Final recall        : 0.637931
+Final F1            : 0.778947
+Final ROC-AUC       : 0.956710
+Final test loss     : 0.546510
+Best accuracy       : 0.928934 (round 10)
+Best F1             : 0.862745 (round 10)
+Best ROC-AUC        : 0.956710 (round 15)
+Communication       : 17.3241 MiB
+Total round time    : 1.4892 s
+
+Unbalanced Non-IID
+------------------------------------------------------------------------------
+Final accuracy      : 0.898477
+Final precision     : 1.000000
+Final recall        : 0.655172
+Final F1            : 0.791667
+Final ROC-AUC       : 0.956835
+Final test loss     : 0.555285
+Best accuracy       : 0.934010 (round 11)
+Best F1             : 0.873786 (round 11)
+Best ROC-AUC        : 0.956835 (round 15)
+Communication       : 17.3241 MiB
+Total round time    : 1.5370 s
+
+AUC difference Balanced Non-IID vs IID: -0.004465
+AUC difference Unbalanced Non-IID vs IID: -0.004341
+
+Interpretation note:
+These experiments use the same controlled feature, label, model and global-test protocol. The IID/non-IID partitions are our experimental design, not a claim that the published paper used these exact partitions.

@@ -1,0 +1,17 @@
+metric,value
+scenario,persistent_failure
+rounds,15
+clients,10
+local_epochs,1
+batch_size,512
+learning_rate,0.001
+seed,42
+final_accuracy,0.9441624365482234
+final_precision,0.9272727272727272
+final_recall,0.8793103448275862
+final_f1,0.9026548672566371
+final_roc_auc,0.9693624410816175
+final_test_loss,0.5843422412872314
+total_communication_bytes,15501312
+total_communication_mib,14.783203125
+total_round_time_seconds,1.592096100001072

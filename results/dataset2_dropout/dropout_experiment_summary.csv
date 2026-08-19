@@ -1,0 +1,5 @@
+dropout_rate,dropout_percentage,average_participating_clients,minimum_participating_clients,maximum_participating_clients
+0.0,0.0,10.0,10,10
+0.2,20.0,8.0,8,8
+0.4,40.0,6.0,6,6
+0.5,50.0,5.0,5,5

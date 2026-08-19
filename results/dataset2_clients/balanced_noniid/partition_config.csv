@@ -1,0 +1,8 @@
+parameter,value
+n_clients,10.0
+seed,42.0
+dirichlet_alpha,0.3
+client_size_min,78.0
+client_size_max,79.0
+minimum_anomalies_per_client,2.0
+minimum_normals_per_client,2.0

@@ -1,0 +1,11 @@
+parameter,value
+scenario,mixed_full
+clients,10
+rounds,15
+seed,42
+noise_client,3
+stale_client,7
+failure_client,9
+noise_multiplier,0.5
+stale_probability,1.0
+failure_start,5

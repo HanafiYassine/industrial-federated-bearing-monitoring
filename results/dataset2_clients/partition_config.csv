@@ -1,0 +1,11 @@
+parameter,value
+input_file,..\results\federated\dataset2_fl_dataset.csv
+total_samples,984
+test_size,0.2
+train_samples,787
+test_samples,197
+n_clients,10
+random_seed,42
+noniid_method,Dirichlet
+dirichlet_alpha,0.3
+minimum_classes_per_client,2

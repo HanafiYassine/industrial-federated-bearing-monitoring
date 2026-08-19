@@ -1,0 +1,13 @@
+parameter,value
+scenario,clean
+clients,10
+rounds,15
+seed,42
+bad_client_fraction,0.2
+bad_clients,"1,8"
+noise_multiplier,0.5
+stale_probability,1.0
+failure_start,5
+noise_clients,1
+stale_clients,8
+failure_clients,

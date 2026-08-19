@@ -1,0 +1,11 @@
+client_id,samples,bad_client,noise_role,stale_role,failure_role,participating_rounds,availability_rate,mean_reliability_score,noise_rounds,stale_rounds,failed_rounds
+1,13,False,False,False,False,15,1.0,1.0,0,0,0
+2,36,False,False,False,False,15,1.0,1.0,0,0,0
+3,53,False,False,False,False,15,1.0,1.0,0,0,0
+4,28,False,False,False,False,15,1.0,1.0,0,0,0
+5,11,False,False,False,False,15,1.0,1.0,0,0,0
+6,21,True,True,False,False,15,1.0,0.6666666666666665,15,0,0
+7,107,True,False,True,False,15,1.0,0.6666666666666665,15,0,0
+8,23,False,False,False,False,15,1.0,1.0,0,0,0
+9,180,False,False,False,False,15,1.0,1.0,0,0,0
+10,315,False,False,False,False,15,1.0,1.0,0,0,0
