@@ -8,8 +8,8 @@ abstract: >-
   combined industrial reliability stress testing, and preliminary
   reliability-aware federated aggregation using the NASA IMS bearing dataset.
 authors:
-  - family-names: "Yassine"
-    given-names: "Hanafi"
+  - family-names: "Hanafi"
+    given-names: "M. Yassine"
     affiliation: "Independent research project"
 keywords:
   - federated learning
