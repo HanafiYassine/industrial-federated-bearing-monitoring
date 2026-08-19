@@ -103,9 +103,7 @@ industrial-federated-bearing-monitoring/
 │   └── reliability_aware_fedavg.py
 ├── figures/
 ├── results/
-└── paper/
-    ├── main.tex
-    └── references.bib
+
 ```
 
 ## Dataset
