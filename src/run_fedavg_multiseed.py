@@ -1,182 +1,540 @@
 """
 run_fedavg_multiseed.py
 
-Run the validated FedAvg baseline across multiple training seeds.
+Multi-seed wrapper for the validated run_fedavg.py experiment.
 
-The client partitions are fixed while training stochasticity is varied.
-Results are stored per seed and summarized as mean +/- standard deviation.
+Purpose
+-------
+Run the existing FedAvg experiment repeatedly with independent random seeds
+without changing the original run_fedavg.py implementation or overwriting
+its seed-42 outputs.
+
+The underlying experiment remains exactly the same:
+    - same client CSV files
+    - same held-out global test set
+    - same global StandardScaler fitting procedure
+    - same model and FedAvg implementation
+    - same number of clients / rounds / local epochs unless overridden
+
+Each seed is saved under:
+    <output-root>/<partition>/seed_<seed>/
+
+A cross-seed summary is also written to:
+    <output-root>/<partition>/multi_seed_summary.csv
+    <output-root>/<partition>/multi_seed_round_summary.csv
+    <output-root>/<partition>/multi_seed_config.csv
+
+Example (from src/):
+    python run_fedavg_multiseed.py --partition iid --seeds 42,123,2024,3407,7777
+
+Single-seed verification:
+    python run_fedavg_multiseed.py --partition iid --seeds 42
 """
 
 from __future__ import annotations
 
 import argparse
-import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-RUNNER = SCRIPT_DIR / "run_fedavg.py"
-RESULTS_ROOT = (SCRIPT_DIR / "../results/federated/dataset2_fedavg").resolve()
+from run_fedavg import (
+    BATCH_SIZE,
+    DEVICE,
+    LEARNING_RATE,
+    LOCAL_EPOCHS,
+    ROUNDS,
+    N_CLIENTS,
+    OUTPUT_ROOT,
+    create_figures,
+    run_experiment,
+)
+
 DEFAULT_SEEDS = [42, 123, 2024, 3407, 7777]
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run FedAvg across multiple seeds.")
-    parser.add_argument("--partition", choices=["iid", "balanced_noniid", "noniid"], required=True)
-    parser.add_argument("--seeds", default="42,123,2024,3407,7777")
-    parser.add_argument("--rounds", type=int, default=15)
-    parser.add_argument("--local-epochs", type=int, default=1)
-    parser.add_argument("--batch-size", type=int, default=512)
-    parser.add_argument("--learning-rate", type=float, default=0.001)
-    parser.add_argument("--keep-existing", action="store_true")
+# ============================================================
+# ARGUMENTS
+# ============================================================
+
+
+def parse_seed_list(value: str) -> list[int]:
+    """Parse a comma-separated list of integer seeds."""
+    raw_values = [item.strip() for item in value.split(",")]
+
+    if not raw_values or any(item == "" for item in raw_values):
+        raise argparse.ArgumentTypeError(
+            "Seeds must be a comma-separated list such as 42,123,2024."
+        )
+
+    try:
+        seeds = [int(item) for item in raw_values]
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(
+            "Every seed must be an integer."
+        ) from exc
+
+    if len(set(seeds)) != len(seeds):
+        raise argparse.ArgumentTypeError(
+            "Seed values must be unique."
+        )
+
+    return seeds
+
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Run the existing FedAvg experiment across multiple seeds."
+    )
+
+    parser.add_argument(
+        "--partition",
+        choices=["iid", "noniid", "balanced_noniid"],
+        required=True,
+        help="Client partition to evaluate.",
+    )
+
+    parser.add_argument(
+        "--seeds",
+        type=parse_seed_list,
+        default=DEFAULT_SEEDS,
+        help="Comma-separated random seeds.",
+    )
+
+    parser.add_argument(
+        "--rounds",
+        type=int,
+        default=ROUNDS,
+        help="Number of FL communication rounds.",
+    )
+
+    parser.add_argument(
+        "--local-epochs",
+        type=int,
+        default=LOCAL_EPOCHS,
+        help="Local epochs per client per round.",
+    )
+
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=BATCH_SIZE,
+        help="Local training batch size.",
+    )
+
+    parser.add_argument(
+        "--learning-rate",
+        type=float,
+        default=LEARNING_RATE,
+        help="Local Adam learning rate.",
+    )
+
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=OUTPUT_ROOT,
+        help="Root directory for multi-seed outputs.",
+    )
+
     return parser.parse_args()
 
 
-def parse_seeds(raw: str) -> list[int]:
-    seeds = [int(item.strip()) for item in raw.split(",") if item.strip()]
-    if not seeds:
+# ============================================================
+# VALIDATION
+# ============================================================
+
+
+def validate_args(args):
+    if args.rounds <= 0:
+        raise ValueError("--rounds must be > 0.")
+
+    if args.local_epochs <= 0:
+        raise ValueError("--local-epochs must be > 0.")
+
+    if args.batch_size <= 0:
+        raise ValueError("--batch-size must be > 0.")
+
+    if args.learning_rate <= 0:
+        raise ValueError("--learning-rate must be > 0.")
+
+    if not args.seeds:
         raise ValueError("At least one seed is required.")
-    return list(dict.fromkeys(seeds))
 
 
-def scenario_dir(partition: str) -> Path:
-    return RESULTS_ROOT / partition
+# ============================================================
+# PER-SEED OUTPUTS
+# ============================================================
 
 
-def seed_dir(partition: str, seed: int) -> Path:
-    return scenario_dir(partition) / "seeds" / f"seed_{seed}"
-
-
-def run_one_seed(partition: str, seed: int, args: argparse.Namespace) -> None:
-    output_dir = scenario_dir(partition)
-    saved_dir = seed_dir(partition, seed)
+def save_seed_results(
+    history: pd.DataFrame,
+    partition: str,
+    seed: int,
+    args,
+) -> Path:
+    """Save one seed's complete round history and final metrics."""
+    output_dir = (
+        args.output_root
+        / partition
+        / f"seed_{seed}"
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
-    (output_dir / "seeds").mkdir(parents=True, exist_ok=True)
 
-    if saved_dir.exists():
-        if args.keep_existing:
-            print(f"Keeping existing results: {saved_dir}")
-            return
-        shutil.rmtree(saved_dir)
+    history = history.copy()
+    history["seed"] = seed
 
-    for filename in ["fedavg_round_history.csv", "fedavg_final_metrics.csv", "fedavg_config.csv"]:
-        path = output_dir / filename
-        if path.exists():
-            path.unlink()
-    for png in output_dir.glob("*.png"):
-        png.unlink()
+    history.to_csv(
+        output_dir / "fedavg_round_history.csv",
+        index=False,
+    )
 
-    command = [
-        sys.executable, str(RUNNER),
-        "--partition", partition,
-        "--rounds", str(args.rounds),
-        "--local-epochs", str(args.local_epochs),
-        "--batch-size", str(args.batch_size),
-        "--learning-rate", str(args.learning_rate),
-        "--seed", str(seed),
+    final = history.iloc[-1]
+
+    final_metrics = pd.DataFrame(
+        {
+            "metric": [
+                "partition",
+                "seed",
+                "rounds",
+                "clients",
+                "local_epochs",
+                "batch_size",
+                "learning_rate",
+                "device",
+                "final_accuracy",
+                "final_precision",
+                "final_recall",
+                "final_f1",
+                "final_roc_auc",
+                "final_test_loss",
+                "total_communication_bytes",
+                "total_round_time_seconds",
+            ],
+            "value": [
+                partition,
+                seed,
+                args.rounds,
+                N_CLIENTS,
+                args.local_epochs,
+                args.batch_size,
+                args.learning_rate,
+                str(DEVICE),
+                final["accuracy"],
+                final["precision"],
+                final["recall"],
+                final["f1"],
+                final["roc_auc"],
+                final["global_test_loss"],
+                history["total_communication_bytes"].sum(),
+                history["round_time_seconds"].sum(),
+            ],
+        }
+    )
+
+    final_metrics.to_csv(
+        output_dir / "fedavg_final_metrics.csv",
+        index=False,
+    )
+
+    config = pd.DataFrame(
+        {
+            "parameter": [
+                "partition",
+                "seed",
+                "clients",
+                "rounds",
+                "local_epochs",
+                "batch_size",
+                "learning_rate",
+                "device",
+                "model",
+                "input_features",
+                "hidden_layers",
+                "dropout",
+            ],
+            "value": [
+                partition,
+                seed,
+                N_CLIENTS,
+                args.rounds,
+                args.local_epochs,
+                args.batch_size,
+                args.learning_rate,
+                str(DEVICE),
+                "FederatedMLP",
+                36,
+                "128-64-32",
+                0.40,
+            ],
+        }
+    )
+
+    config.to_csv(
+        output_dir / "fedavg_config.csv",
+        index=False,
+    )
+
+    # Reuse the established publication figures for each seed.
+    create_figures(
+        history.drop(columns=["seed"]),
+        partition,
+        output_dir,
+    )
+
+    return output_dir
+
+
+# ============================================================
+# CROSS-SEED SUMMARY
+# ============================================================
+
+
+def build_seed_summary(seed_histories: list[pd.DataFrame]) -> pd.DataFrame:
+    """Build final-round per-seed metrics plus mean/std across seeds."""
+    rows: list[dict] = []
+
+    metric_columns = [
+        "accuracy",
+        "precision",
+        "recall",
+        "f1",
+        "roc_auc",
+        "global_test_loss",
+        "total_communication_bytes",
+        "round_time_seconds",
     ]
-    print("\n" + "=" * 88)
-    print(f"RUNNING FedAvg: partition={partition}, seed={seed}")
-    print("=" * 88)
-    completed = subprocess.run(command, cwd=SCRIPT_DIR, check=False)
-    if completed.returncode != 0:
-        raise RuntimeError(f"FedAvg failed for seed {seed}: exit code {completed.returncode}")
 
-    if not (output_dir / "fedavg_final_metrics.csv").exists():
-        raise FileNotFoundError("FedAvg final metrics were not produced.")
+    for history in seed_histories:
+        final = history.iloc[-1]
+        rows.append(
+            {
+                "seed": int(final["seed"]),
+                **{
+                    metric: float(final[metric])
+                    for metric in metric_columns
+                },
+            }
+        )
 
-    saved_dir.mkdir(parents=True, exist_ok=True)
-    for filename in ["fedavg_round_history.csv", "fedavg_final_metrics.csv", "fedavg_config.csv"]:
-        source = output_dir / filename
-        if source.exists():
-            shutil.copy2(source, saved_dir / filename)
-    for png in output_dir.glob("*.png"):
-        shutil.copy2(png, saved_dir / png.name)
+    per_seed = pd.DataFrame(rows).sort_values("seed")
+
+    summary_rows = []
+
+    for metric in metric_columns:
+        values = per_seed[metric].to_numpy(dtype=float)
+
+        summary_rows.append(
+            {
+                "metric": metric,
+                "n_seeds": len(values),
+                "mean": float(np.mean(values)),
+                "std": float(np.std(values, ddof=1)) if len(values) > 1 else 0.0,
+                "min": float(np.min(values)),
+                "max": float(np.max(values)),
+            }
+        )
+
+    summary = pd.DataFrame(summary_rows)
+
+    return per_seed, summary
 
 
-def load_seed_results(partition: str, seeds: list[int]) -> pd.DataFrame:
+
+def build_round_summary(seed_histories: list[pd.DataFrame]) -> pd.DataFrame:
+    """Aggregate round-level metrics across seeds."""
+    frames = []
+
+    for history in seed_histories:
+        df = history.copy()
+        if "seed" not in df.columns:
+            raise ValueError("Seed column is missing from round history.")
+        frames.append(df)
+
+    combined = pd.concat(frames, ignore_index=True)
+
+    metric_columns = [
+        "mean_local_loss",
+        "global_test_loss",
+        "accuracy",
+        "precision",
+        "recall",
+        "f1",
+        "roc_auc",
+        "round_time_seconds",
+        "total_communication_bytes",
+    ]
+
     rows = []
-    for seed in seeds:
-        path = seed_dir(partition, seed) / "fedavg_final_metrics.csv"
-        df = pd.read_csv(path)
-        metrics = dict(zip(df["metric"].astype(str), df["value"]))
-        rows.append({
-            "partition": partition,
-            "seed": seed,
-            "accuracy": float(metrics["final_accuracy"]),
-            "precision": float(metrics["final_precision"]),
-            "recall": float(metrics["final_recall"]),
-            "f1": float(metrics["final_f1"]),
-            "roc_auc": float(metrics["final_roc_auc"]),
-            "global_test_loss": float(metrics["final_test_loss"]),
-            "total_communication_bytes": float(metrics["total_communication_bytes"]),
-            "total_round_time_seconds": float(metrics["total_round_time_seconds"]),
-        })
+
+    grouped = combined.groupby("round", sort=True)
+
+    for round_number, group in grouped:
+        row = {
+            "round": int(round_number),
+            "n_seeds": int(group["seed"].nunique()),
+        }
+
+        for metric in metric_columns:
+            values = group[metric].to_numpy(dtype=float)
+            row[f"{metric}_mean"] = float(np.mean(values))
+            row[f"{metric}_std"] = (
+                float(np.std(values, ddof=1))
+                if len(values) > 1
+                else 0.0
+            )
+
+        rows.append(row)
+
     return pd.DataFrame(rows)
 
 
-def save_summary(per_seed: pd.DataFrame, partition: str, seeds: list[int], args: argparse.Namespace) -> None:
-    output_dir = scenario_dir(partition)
-    per_seed.to_csv(output_dir / "multi_seed_per_seed_results.csv", index=False)
 
-    metrics = ["accuracy", "precision", "recall", "f1", "roc_auc", "global_test_loss", "total_communication_bytes", "total_round_time_seconds"]
-    rows = []
-    for metric in metrics:
-        values = per_seed[metric].to_numpy(float)
-        rows.append({
-            "partition": partition,
-            "seeds": ",".join(map(str, seeds)),
-            "n_seeds": len(seeds),
-            "metric": metric,
-            "mean": float(np.mean(values)),
-            "std": float(np.std(values, ddof=1)) if len(values) > 1 else 0.0,
-        })
-    pd.DataFrame(rows).to_csv(output_dir / "multi_seed_summary.csv", index=False)
+def save_cross_seed_summary(
+    seed_histories: list[pd.DataFrame],
+    partition: str,
+    seeds: list[int],
+    args,
+):
+    output_dir = args.output_root / partition
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    compact = {"partition": partition, "n_seeds": len(seeds)}
-    for metric in metrics:
-        values = per_seed[metric].to_numpy(float)
-        compact[f"{metric}_mean"] = float(np.mean(values))
-        compact[f"{metric}_std"] = float(np.std(values, ddof=1)) if len(values) > 1 else 0.0
-    pd.DataFrame([compact]).to_csv(output_dir / "multi_seed_compact_summary.csv", index=False)
+    per_seed, summary = build_seed_summary(seed_histories)
+    round_summary = build_round_summary(seed_histories)
 
-    pd.DataFrame({
-        "parameter": ["partition", "seeds", "n_seeds", "rounds", "local_epochs", "batch_size", "learning_rate", "client_partitions", "global_test"],
-        "value": [partition, ",".join(map(str, seeds)), len(seeds), args.rounds, args.local_epochs, args.batch_size, args.learning_rate, "fixed across seeds", "fixed global test set"],
-    }).to_csv(output_dir / "multi_seed_config.csv", index=False)
+    per_seed.to_csv(
+        output_dir / "multi_seed_per_seed_results.csv",
+        index=False,
+    )
 
-    print("\n" + "=" * 88)
-    print("MULTI-SEED FEDAVG COMPLETE")
-    print("=" * 88)
-    print(f"Partition: {partition}")
-    print(f"Seeds    : {seeds}")
-    print("\nFinal-round mean +/- std:")
-    for metric in metrics:
-        values = per_seed[metric].to_numpy(float)
-        std = np.std(values, ddof=1) if len(values) > 1 else 0.0
-        print(f"  {metric:28s}: {np.mean(values):.6f} +/- {std:.6f}")
-    print(f"\nPer-seed results : {output_dir / 'multi_seed_per_seed_results.csv'}")
-    print(f"Summary          : {output_dir / 'multi_seed_summary.csv'}")
-    print(f"Compact summary  : {output_dir / 'multi_seed_compact_summary.csv'}")
-    print(f"Configuration    : {output_dir / 'multi_seed_config.csv'}")
-    print("=" * 88)
+    summary.to_csv(
+        output_dir / "multi_seed_summary.csv",
+        index=False,
+    )
+
+    round_summary.to_csv(
+        output_dir / "multi_seed_round_summary.csv",
+        index=False,
+    )
+
+    config = pd.DataFrame(
+        {
+            "parameter": [
+                "partition",
+                "seeds",
+                "n_seeds",
+                "clients",
+                "rounds",
+                "local_epochs",
+                "batch_size",
+                "learning_rate",
+                "device",
+                "client_partitions_fixed_across_seeds",
+            ],
+            "value": [
+                partition,
+                ",".join(str(seed) for seed in seeds),
+                len(seeds),
+                N_CLIENTS,
+                args.rounds,
+                args.local_epochs,
+                args.batch_size,
+                args.learning_rate,
+                str(DEVICE),
+                True,
+            ],
+        }
+    )
+
+    config.to_csv(
+        output_dir / "multi_seed_config.csv",
+        index=False,
+    )
+
+    return per_seed, summary, round_summary
 
 
-def main() -> None:
+# ============================================================
+# MAIN
+# ============================================================
+
+
+def main():
     args = parse_args()
-    if args.rounds <= 0 or args.local_epochs <= 0 or args.batch_size <= 0 or args.learning_rate <= 0:
-        raise ValueError("Training parameters must be positive.")
-    seeds = parse_seeds(args.seeds)
-    if not RUNNER.exists():
-        raise FileNotFoundError(f"Missing runner: {RUNNER}")
-    for seed in seeds:
-        run_one_seed(args.partition, seed, args)
-    per_seed = load_seed_results(args.partition, seeds)
-    save_summary(per_seed, args.partition, seeds, args)
+    validate_args(args)
+
+    print("=" * 80)
+    print("MULTI-SEED FEDAVG VALIDATION")
+    print("=" * 80)
+    print(f"Partition       : {args.partition}")
+    print(f"Seeds           : {args.seeds}")
+    print(f"Rounds          : {args.rounds}")
+    print(f"Local epochs    : {args.local_epochs}")
+    print(f"Batch size      : {args.batch_size}")
+    print(f"Learning rate   : {args.learning_rate}")
+    print(f"Device          : {DEVICE}")
+    print("=" * 80)
+
+    seed_histories: list[pd.DataFrame] = []
+
+    for seed in args.seeds:
+        print()
+        print("#" * 80)
+        print(f"RUNNING SEED {seed}")
+        print("#" * 80)
+
+        history = run_experiment(
+            partition=args.partition,
+            rounds=args.rounds,
+            local_epochs=args.local_epochs,
+            batch_size=args.batch_size,
+            learning_rate=args.learning_rate,
+            seed=seed,
+        )
+
+        history = history.copy()
+        history["seed"] = seed
+        seed_histories.append(history)
+
+        save_seed_results(
+            history,
+            args.partition,
+            seed,
+            args,
+        )
+
+    per_seed, summary, round_summary = save_cross_seed_summary(
+        seed_histories,
+        args.partition,
+        args.seeds,
+        args,
+    )
+
+    print()
+    print("=" * 80)
+    print("MULTI-SEED FEDAVG COMPLETE")
+    print("=" * 80)
+    print(f"Partition: {args.partition}")
+    print(f"Seeds    : {args.seeds}")
+    print()
+    print("Final-round mean ± std:")
+
+    for _, row in summary.iterrows():
+        metric = row["metric"]
+        mean_value = row["mean"]
+        std_value = row["std"]
+        print(
+            f"  {metric:28s}: {mean_value:.6f} ± {std_value:.6f}"
+        )
+
+    output_dir = args.output_root / args.partition
+    print()
+    print("Per-seed results :", output_dir / "multi_seed_per_seed_results.csv")
+    print("Summary          :", output_dir / "multi_seed_summary.csv")
+    print("Round summary    :", output_dir / "multi_seed_round_summary.csv")
+    print("Configuration    :", output_dir / "multi_seed_config.csv")
+    print("=" * 80)
 
 
 if __name__ == "__main__":
